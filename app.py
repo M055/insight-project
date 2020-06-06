@@ -6,8 +6,11 @@ import streamlit as st
 from PIL import Image
 
 st.title('Power to the Meeple')
+st.markdown('** MEANINGful recommendations for the novice board gamer**')
 
-meeple_image = Image.open('other/meeplered.png')
+
+
+meeple_image = Image.open('other/meeple.png')
 st.image(meeple_image, caption='meeple',width=200)
 
 # LOAD DATA
