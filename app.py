@@ -6,12 +6,18 @@ import numpy as np
 import streamlit as st
 import sklearn.metrics.pairwise as sklpw
 from PIL import Image
+from fuzzywuzzy import fuzz
+import re
+
 
 st.title('Power to the Meeple')
 st.markdown('** MEANINGful recommendations for the novice board gamer**')
 
 meeple_image = Image.open('other/meeple.png')
 st.image(meeple_image, caption='meeple',width=200)
+
+st.markdown('** Select a game by typing the title below, or select from the list on the left. Press _Go_ to search **')
+
 
 # LOAD DATA
 allgamedata_df = pd.read_pickle('datasources/BGG_FINAL.pkl')
@@ -42,16 +48,19 @@ def getcompute_similar_games_by_name(mygameid,allgamedata_df,allgamedocvects,fin
     return mytop10simlist_df
 
 
-def get_similar_games_by_name_fuzzy(mygamename):
-    gamename_matchlist = [fuzz.token_sort_ratio(x,mygamename) for x in finalgamelist_df['gamename']]
+def get_real_name_fuzzy(usergamename):
+    # Clean up
+    usergamename = re.sub(r"\d+", "", usergamename)
+    usergamename = re.sub(r"(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)|^rt|http.+?", "", usergamename)
+    #usergamename = re.sub(r"\d+", "", usergamename) # Maybe dont remove numbers?
+
+    gamename_matchlist = [fuzz.token_sort_ratio(x,usergamename) for x in finalgamelist_df['gamename']]
     possiblegame_idx  = [i for i, x in enumerate(gamename_matchlist) if x == max(gamename_matchlist)]
     possiblegame_idx = possiblegame_idx[0] # Get first, make it number
     possiblegame_name = list(finalgamelist_df.loc[finalgamelist_df['idx']==possiblegame_idx,'gamename'])[0]
-    print('Best match: {}'.format(possiblegame_name))
-    mygamevect = list(allgamesimilarities_df.loc[:,possiblegame_name])
-    mygamevect_df = pd.DataFrame({'gamename':allgamesimilarities_df.index,'cosinesimilarity':mygamevect})
-    mygamevect_df.sort_values(by='cosinesimilarity',inplace=True,ascending=False)
-    return mygamevect_df
+    #print('Best match: {}'.format(possiblegame_name))
+
+    return possiblegame_name #,max(gamename_matchlist)
 
 def make_clickable(url,text): # Make liks in pd df for url in table
     return f'<a target="_blank" href="{url}">{text}</a>'
@@ -69,16 +78,25 @@ topranked_idx = topranked_df.index
 demo_gamelist = tuple(list(finalgamelist_df.loc[topranked_idx,'gamename']))
 
 # SHOW SOME STUFF
-mygamename = st.selectbox('Choose a game',demo_gamelist)
+mydemogamename = st.sidebar.selectbox('Choose a game',demo_gamelist)
 
 # WHEN YOU CLICK THE BUTTON...
+usergamename = 'Gloomhaven'
+usergamename = st.text_input('Enter game title', 'Gloomhaven',max_chars=30)
+#st.write('The current game title is', get_real_name_fuzzy(usergamename))
+usemygamename = st.checkbox('Use my text')
+
 clicked = st.button('Go')
 if clicked:
     with st.spinner('Looking for similar games...'):
+        if usemygamename:
+            mygamename = get_real_name_fuzzy(usergamename)
+        else:
+            mygamename = mydemogamename
         mygameid = allgamedata_df.loc[allgamedata_df['game_name']==mygamename,:].index[0]
         mygameurl=allgamedata_df.loc[mygameid,'bgg_url']
-        st.write('Games closest to your chosen game:')
-        st.write(mygameurl)
+        st.write('Games closest to your chosen game: ' + mygamename)
+        #st.write(mygameurl)
 
         mygameid = list(finalgamelist_df.index[finalgamelist_df['gamename']==mygamename])[0] # Need INDEX, not idx
         mygameurl=list(allgamedata_df.loc[allgamedata_df['game_name']==mygamename,'bgg_url'])[0]

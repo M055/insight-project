@@ -4,3 +4,6 @@ seaborn==0.10.0
 numpy==1.18.1
 Pillow==7.1.2
 scikit-learn==0.22.2.post1
+fuzzywuzzy==0.17.0
+regex==2020.5.14
+python-levenshtein==0.12.0
