@@ -1,4 +1,4 @@
-name: VTAlert
+name: power2meeple
 channels:
 - conda-forge
 dependencies:
@@ -12,3 +12,4 @@ dependencies:
 - pip
 - pip:
   - streamlit
+
