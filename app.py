@@ -35,14 +35,14 @@ def getcompute_similar_games_by_name(mygameid,allgamedata_df,allgamedocvects,fin
         currgamevect = currgamevect.reshape(-1,1)
         dum = sklpw.cosine_similarity(currgamevect.T,mygamevector.T)
         mysimilarities.append(dum[0][0])
-    mycompletesimlist_df = pd.concat((finalgamelist_df['gamename'],pd.DataFrame({'Similarity':mysimilarities})),axis=1)
+    mycompletesimlist_df = pd.concat((finalgamelist_df['game_name'],pd.DataFrame({'Similarity':mysimilarities})),axis=1)
     mycompletesimlist_df.sort_values(by='Similarity',ascending=False,inplace=True)
     mytop10simlist_df = mycompletesimlist_df[1:11]
     # Create output list
     urllist=[]
-    for gamename in mytop10simlist_df['gamename']:
+    for gamename in mytop10simlist_df['game_name']:
         urllist.append(list(allgamedata_df.loc[allgamedata_df['game_name']==gamename,'bgg_url'])[0])
-    mytop10simlist_df = pd.DataFrame({'Game':mytop10simlist_df['gamename'],'Similarity':mytop10simlist_df['Similarity'],'url':urllist})
+    mytop10simlist_df = pd.DataFrame({'Game':mytop10simlist_df['game_name'],'Similarity':mytop10simlist_df['Similarity'],'url':urllist})
     mytop10simlist_df.reset_index(drop=True,inplace=True)
     mytop10simlist_df.index = mytop10simlist_df.index+1
     return mytop10simlist_df
@@ -54,10 +54,10 @@ def get_real_name_fuzzy(usergamename):
     usergamename = re.sub(r"(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)|^rt|http.+?", "", usergamename)
     #usergamename = re.sub(r"\d+", "", usergamename) # Maybe dont remove numbers?
 
-    gamename_matchlist = [fuzz.token_sort_ratio(x,usergamename) for x in finalgamelist_df['gamename']]
+    gamename_matchlist = [fuzz.token_sort_ratio(x,usergamename) for x in finalgamelist_df['game_name']]
     possiblegame_idx  = [i for i, x in enumerate(gamename_matchlist) if x == max(gamename_matchlist)]
     possiblegame_idx = possiblegame_idx[0] # Get first, make it number
-    possiblegame_name = list(finalgamelist_df.loc[finalgamelist_df['idx']==possiblegame_idx,'gamename'])[0]
+    possiblegame_name = list(finalgamelist_df.loc[finalgamelist_df['idx']==possiblegame_idx,'game_name'])[0]
     #print('Best match: {}'.format(possiblegame_name))
 
     return possiblegame_name #,max(gamename_matchlist)
@@ -75,7 +75,7 @@ def streamlitify_df(df):
 allgamedata_df['numeric_ranks']=[int(x) for x in allgamedata_df['game_rank']]
 topranked_df = pd.DataFrame(allgamedata_df.loc[allgamedata_df['numeric_ranks']<=50,'game_name']) # To go back n forth
 topranked_idx = topranked_df.index
-demo_gamelist = tuple(list(finalgamelist_df.loc[topranked_idx,'gamename']))
+demo_gamelist = tuple(list(finalgamelist_df.loc[topranked_idx,'game_name']))
 
 # SHOW SOME STUFF
 mydemogamename = st.sidebar.selectbox('Choose a game',demo_gamelist)
@@ -98,7 +98,7 @@ if clicked:
         st.write('Games closest to your chosen game: ' + mygamename)
         #st.write(mygameurl)
 
-        mygameid = list(finalgamelist_df.index[finalgamelist_df['gamename']==mygamename])[0] # Need INDEX, not idx
+        mygameid = list(finalgamelist_df.index[finalgamelist_df['game_name']==mygamename])[0] # Need INDEX, not idx
         mygameurl=list(allgamedata_df.loc[allgamedata_df['game_name']==mygamename,'bgg_url'])[0]
         mytop10simlist_df = getcompute_similar_games_by_name(mygameid,allgamedata_df,allgamedocvects,finalgamelist_df)
         mygamevect_df = streamlitify_df(mytop10simlist_df)
