@@ -22,7 +22,7 @@ st.markdown('** Select a game by typing the title below, or select from the list
 # LOAD DATA
 allgamedata_df = pd.read_pickle('datasources/BGG_FINAL.pkl')
 finalgamelist_df = pd.read_pickle('datasources/BGG_GameSimilarityKey.pkl')
-allgamedocvects = np.load('datasources/allgamedocvects.npz')['arr_0']
+allgamedocvects = np.load('datasources/allgamedocvects_v3.npz')['arr_0']
 
 # FUNCTIONS
 def getcompute_similar_games_by_name(mygameid,allgamedata_df,allgamedocvects,finalgamelist_df):
