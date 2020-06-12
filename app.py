@@ -15,8 +15,13 @@ st.header('**MEANINGful recommendations for the novice board gamer**')
 meeple_image = Image.open('other/meeple.png')
 st.sidebar.image(meeple_image, caption='meeple',width=100)
 st.sidebar.markdown('**Mee.ple** _noun_ \n a small figure used as a playing piece in certain board games, having a stylized human form.')
-st.sidebar.markdown('Early 21st century: apparently a blend of **my** and a phonetic respelling of **people** and first used with reference to the board game ''<a target="_blank" href="https://boardgamegeek.com/boardgame/822/carcassonne">Carcassonne</a>.', unsafe_allow_html=True)
-st.sidebar.markdown('_-Google_')
+#st.sidebar.markdown('Early 21st century: apparently a blend of **my** and a phonetic respelling of **people** and first used with reference to the board game ''<a target="_blank" href="https://boardgamegeek.com/boardgame/822/carcassonne">Carcassonne</a>.', unsafe_allow_html=True)
+#st.sidebar.markdown('_-Google_')
+
+st.sidebar.header('What do these recommendations mean?')
+st.sidebar.markdown('**Conceptually similar games**: These are games that, as a whole, are similar to your target game. For example, you would summarize them in very similar ways when describing them to your friend.')
+st.sidebar.markdown('**Games with similar features**: These are games that are similar to your target game in terms of specific features such as the type and genre of the game, or the mechanics it employs.')
+
 
 st.markdown('** Select a game from the dropdown list of top rated games on BoardGameGeek.com, or enter a game name in the text box. Press _Go_ to search **')
 
