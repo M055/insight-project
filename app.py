@@ -22,7 +22,7 @@ st.markdown('** Select a game from the dropdown list of top rated games on Board
 
 
 # LOAD DATA
-allgamedata_df = pd.read_pickle('datasources/BGG_FINAL.pkl') # USE ONLY FOR URLS
+allgamedata_df = pd.read_pickle('datasources/gamerankurl_df.pkl') # USE ONLY FOR URLS
 allgamedata_df = allgamedata_df.astype({'game_rank':'int32'},copy=True)
 allgamedocvects = np.load('datasources/allgamedocvects_v3.npz')['arr_0']
 finalgamelist_df = pd.read_pickle('datasources/BGG_GameSimilarityKey.pkl')
