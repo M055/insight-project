@@ -1,7 +1,6 @@
 # VERSION V4BK
 # Testing tabs
 import pandas as pd
-import seaborn as sns
 import numpy as np
 import streamlit as st
 from streamlit.ReportThread import get_report_ctx
@@ -105,7 +104,7 @@ demo_gamelist = tuple(demogamelist_manual)
 
 ####### INTRO
 st.title('Meeple for People')
-st.header('**MEANINGful recommendations for the novice board gamer**')
+st.header('**MEANINGful recommendations for all board gamers**')
 meeple_image = Image.open('other/meeple.png')
 
 
@@ -116,7 +115,7 @@ def page_first(state):
     #state.mydemogamename = st.selectbox('Choose a game',demo_gamelist)
     state.mygamename = st.selectbox('',demo_gamelist)
     state.usemygamename = False
-    st.markdown('** Select a game from the dropdown list of popular games. Press _Go_ to search **')
+    st.markdown('** Select a game from the dropdown list of popular games (change the selection method from the side panel). Press _Go_ to search **')
 
 def page_second(state):
     st.header("Enter a game name:")
@@ -125,7 +124,7 @@ def page_second(state):
     state.mygamename = 'Taboo'
     state.mygamename = st.text_input('', 'Taboo',max_chars=30)
     state.usemygamename = True
-    st.markdown('** Enter a game name in the text box. Press _Go_ to search **')
+    st.markdown('** Enter a game name in the text box (change the selection method from the side panel). Press _Go_ to search **')
  
   
 pages = {
