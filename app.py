@@ -1,37 +1,154 @@
-# VERSION V3
+# VERSION V4BK
+# Testing tabs
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import streamlit as st
+from streamlit.ReportThread import get_report_ctx
+from streamlit.hashing import _CodeHasher
+from streamlit.server.Server import Server
 import sklearn.metrics.pairwise as sklpw
 from PIL import Image
 from fuzzywuzzy import fuzz
 import re
 
+
+### THE WHOLE STATE THING:
+class _SessionState:
+
+    def __init__(self, session):
+        """Initialize SessionState instance."""
+        self.__dict__["_state"] = {
+            "data": {},
+            "hash": None,
+            "hasher": _CodeHasher(),
+            "is_rerun": False,
+            "session": session,
+        }
+
+    def __call__(self, **kwargs):
+        """Initialize state data once."""
+        for item, value in kwargs.items():
+            if item not in self._state["data"]:
+                self._state["data"][item] = value
+
+    def __getitem__(self, item):
+        """Return a saved state value, None if item is undefined."""
+        return self._state["data"].get(item, None)
+        
+    def __getattr__(self, item):
+        """Return a saved state value, None if item is undefined."""
+        return self._state["data"].get(item, None)
+
+    def __setitem__(self, item, value):
+        """Set state value."""
+        self._state["data"][item] = value
+
+    def __setattr__(self, item, value):
+        """Set state value."""
+        self._state["data"][item] = value
+    
+    def clear(self):
+        """Clear session state and request a rerun."""
+        self._state["data"].clear()
+        self._state["session"].request_rerun()
+    
+    def sync(self):
+        """Rerun the app with all state values up to date from the beginning to fix rollbacks."""
+
+        # Ensure to rerun only once to avoid infinite loops
+        # caused by a constantly changing state value at each run.
+        #
+        # Example: state.value += 1
+        if self._state["is_rerun"]:
+            self._state["is_rerun"] = False
+        
+        elif self._state["hash"] is not None:
+            if self._state["hash"] != self._state["hasher"].to_bytes(self._state["data"], None):
+                self._state["is_rerun"] = True
+                self._state["session"].request_rerun()
+
+        self._state["hash"] = self._state["hasher"].to_bytes(self._state["data"], None)
+
+
+def _get_session():
+    session_id = get_report_ctx().session_id
+    session_info = Server.get_current()._get_session_info(session_id)
+
+    if session_info is None:
+        raise RuntimeError("Couldn't get your Streamlit Session object.")
+    
+    return session_info.session
+
+
+def _get_state():
+    session = _get_session()
+
+    if not hasattr(session, "_custom_session_state"):
+        session._custom_session_state = _SessionState(session)
+
+    return session._custom_session_state
+
+
+
+
+
+
+
+############# REAL START HERE!
+state = _get_state()
+
+######## INITIALIZE SOME VARIABLES
+demogamelist_manual = ['Azul', 'Catan','Carcassonne','Cards Against Humanity', 'Clue','Pandemic', 'Scrabble','Taboo' ]
+demo_gamelist = tuple(demogamelist_manual)
+
+
+####### INTRO
 st.title('Meeple for People')
 st.header('**MEANINGful recommendations for the novice board gamer**')
-
 meeple_image = Image.open('other/meeple.png')
+
+
+
+def page_first(state):
+    st.header("Select a game from the menu:")
+    # SHOW SOME STUFF
+    #state.mydemogamename = st.selectbox('Choose a game',demo_gamelist)
+    state.mygamename = st.selectbox('',demo_gamelist)
+    state.usemygamename = False
+    st.markdown('** Select a game from the dropdown list of popular games. Press _Go_ to search **')
+
+def page_second(state):
+    st.header("Enter a game name:")
+    #state.usergamename = 'Taboo'
+    #state.usergamename = st.text_input('Enter game name', 'Taboo',max_chars=30)
+    state.mygamename = 'Taboo'
+    state.mygamename = st.text_input('', 'Taboo',max_chars=30)
+    state.usemygamename = True
+    st.markdown('** Enter a game name in the text box. Press _Go_ to search **')
+ 
+  
+pages = {
+    "Choose a game from the list": page_first,
+    "Enter a game name": page_second,
+}
+
+
+##### INIT SIDEBAR
 st.sidebar.image(meeple_image, caption='meeple',width=100)
 st.sidebar.markdown('**Mee.ple** _noun_ \n a small figure used as a playing piece in certain board games, having a stylized human form.')
-#st.sidebar.markdown('Early 21st century: apparently a blend of **my** and a phonetic respelling of **people** and first used with reference to the board game ''<a target="_blank" href="https://boardgamegeek.com/boardgame/822/carcassonne">Carcassonne</a>.', unsafe_allow_html=True)
-#st.sidebar.markdown('_-Google_')
 
-min_rating = st.sidebar.slider('Minimum BGG average rating', min_value=1, max_value=9, value=7, step=1) 
-min_players = st.sidebar.slider('Minimum number of players', min_value=1, max_value=10, value=1, step=1) 
-min_dur = st.sidebar.slider('Minimum time to play (min)', min_value=1, max_value=100, value=1, step=1) 
+page = st.sidebar.radio("Select your input method", tuple(pages.keys()))
+# Display the selected page with the session state
+pages[page](state)
 
-
+######## OTHER SIDEBAR STUFF
 st.sidebar.header('What do these recommendations mean?')
-st.sidebar.markdown('**Conceptually similar games**: These are games that, as a whole, are similar to your target game. For example, you would summarize them in very similar ways when describing them to your friend.')
-st.sidebar.markdown('**Games with similar features**: These are games that are similar to your target game in terms of specific features such as the type and genre of the game, or the mechanics it employs.')
+st.sidebar.markdown('These recommendations balance **Conceptually similar games**:  games that, as a whole, are similar to your target game. For example, you would summarize them in very similar ways when describing them to your friend, and **Games with similar features**: games that are similar to your target game in terms of specific features such as the type and genre of the game, or the mechanics it employs.')
 
 
-st.markdown('** Select a game from the dropdown list of top rated games on BoardGameGeek.com, or enter a game name in the text box. Press _Go_ to search **')
 
-
-# LOAD DATA
-
+############# LOAD DATA
 allgamedata_df = pd.read_pickle('datasources/bgg_filters.pkl') # USE FOR URLS and FILTERS
 allgamedata_df = allgamedata_df.astype({'game_rank':'int32'},copy=True)
 allgamedocvects = np.load('datasources/allgamedocvects_v3.npz')['arr_0']
@@ -39,12 +156,26 @@ finalgamelist_df = pd.read_pickle('datasources/finalgamelist_df.pkl')
 #finalgamelist_df =  finalgamelist_df.astype({'game_rank':'int32'},copy=True)
 #finalgamelist_df['num_raters'] = [list(allgamedata_df.loc[allgamedata_df['game_name']==g,'num_raters'])[0] for g in #finalgamelist_df['game_name']]
 #finalgamelist_df.reset_index(drop=True,inplace=True) # So that row ids are indices to gamevector array
-
-# FOr gameplay-based vectors
+##### FOr gameplay-based vectors
 bgg_gameplay_df = pd.read_pickle('datasources/bgg_gameplayfeatures.pkl')
 bgg_gameplay_df.dropna(inplace=True) # Some not-NAs here...
 bgg_gameplay_df.reset_index(drop=True,inplace=True)
 allgamePLAYdocvects = np.array(bgg_gameplay_df.iloc[:,1:]) # Create right here
+
+
+
+
+########## SET VARIABLES
+min_rating = 2
+min_players = 1 #st.sidebar.slider('Minimum number of players', min_value=1, max_value=10, value=1, step=1) 
+min_dur = 1 #st.sidebar.slider('Minimum time to play (min)', min_value=1, max_value=100, value=1, step=1) 
+defaultnumraters = 2 # At least so many raters (log10)
+
+
+
+
+
+######### MAIN PART
 
 # FUNCTIONS
 
@@ -113,9 +244,21 @@ def getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,
     # UPDATE myFINALsimlist_df
     myFINALsimlist_df = myFINALsimlist_df.loc[myfilters,:].copy()
     
+     #MO: Jun 18: Add in SUPECOMBO. Sort right after
+    avgratingfactor = myFINALsimlist_df.iloc[0,:]['avg_rating']/10 # SCALE by rating of game?
+    dumsupercombo = np.array(myFINALsimlist_df['Similarity'] + myFINALsimlist_df['GameplaySimilarity'] + (myFINALsimlist_df['avg_rating']/10)*avgratingfactor + np.log10(myFINALsimlist_df['num_raters'])/5)/4
+    myFINALsimlist_df['supercombo'] = dumsupercombo
+    myFINALsimlist_df.sort_values(by='supercombo',inplace=True,ascending=False)
+    myFINALsimlist_df.drop(index=0,inplace=True) # DROP THE MAIN COMPARISON GAME ALREADY
+    myFINALsimlist_df.reset_index(drop=True,inplace=True)
     
     # Create output list
-    mytop10simlist_df = myFINALsimlist_df[1:11]
+    # MO: New Jun 13 - check to make sure there are enough games!
+    # MO: June 18: return FULL LIST, compute later
+    if len(myFINALsimlist_df)>11:    
+        mytop10simlist_df = myFINALsimlist_df[:10].copy()
+    else:
+        mytop10simlist_df = myFINALsimlist_df.copy()
     urllist=[]
     for gamename in mytop10simlist_df['game_name']:
         urllist.append(list(allgamedata_df.loc[allgamedata_df['game_name']==gamename,'bgg_url'])[0])
@@ -123,7 +266,8 @@ def getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,
     mytop10simlist_df = pd.DataFrame({'Game':mytop10simlist_df['game_name'],'url':urllist})
     mytop10simlist_df.reset_index(drop=True,inplace=True)
     mytop10simlist_df.index = mytop10simlist_df.index+1
-    return mytop10simlist_df
+    
+    return mytop10simlist_df,myFINALsimlist_df
     
     
 def get_real_name_fuzzy(usergamename,finalgamelist_df):
@@ -147,43 +291,22 @@ def streamlitify_df(df):
     df['Game link'] = [make_clickable(a,b) for a,b in zip(list(df['url']),list(df['Game']))]
     return df
 
-
-# CREATES THE DEMO GAME LIST
-allgamedata_df['numeric_ranks']=[int(x) for x in allgamedata_df['game_rank']]
-topranked_df = pd.DataFrame(allgamedata_df.loc[allgamedata_df['numeric_ranks']<=50,'game_name']) # To go back n forth
-topranked_df.sort_values(by='game_name',inplace=True)
-topranked_idx = topranked_df.index
-demo_gamelist = tuple(list(finalgamelist_df.loc[topranked_idx,'game_name']))
-
-
-# SHOW SOME STUFF
-mydemogamename = st.selectbox('Choose a game',demo_gamelist)
-
-st.write('Or..')
-
-# Setup
-defaultnumraters = 2 # At least so many raters (log10)
-usergamename = 'Gloomhaven'
-usergamename = st.text_input('Enter game name', 'Gloomhaven',max_chars=30)
-#usemygamename = st.checkbox('Use game selected from the list')
-gamename_source = st.radio("Process game:",('from the dropdown', 'from the textbox'))
-if gamename_source == 'from the dropdown':
-    usemygamename = False
-else:
-    usemygamename = True
+    
     
     
 
-# WHEN YOU CLICK THE BUTTON...
+############# WHEN YOU CLICK THE BUTTON...
 clicked = st.button('Go')
 if clicked:
     with st.spinner('Looking for similar games...'):
-        if usemygamename:
-            mygamename,qltynum = get_real_name_fuzzy(usergamename,finalgamelist_df)
-        else:
-            mygamename = mydemogamename
+        #if state.usemygamename:
+        #    mygamename,qltynum = get_real_name_fuzzy(state.usergamename,finalgamelist_df)
+        #else:
+        #    mygamename = state.mydemogamename
                 
           # FILTERS
+        
+        mygamename = state.mygamename
         filt_dict = {'min_rating':min_rating,'min_players':min_players,'min_dur':min_dur,'min_numraters':defaultnumraters}
  
         mygamename,qltynum = get_real_name_fuzzy(mygamename,finalgamelist_df)
@@ -193,7 +316,7 @@ if clicked:
         
         # PRepare and write out teh chosen game:
         mygamename_st_url = f'<a target="_blank" href="{mygameurl}">{mygamename}</a>'
-        if usemygamename: # If text used, indicate this is a guess:
+        if state.usemygamename: # If text used, indicate this is a guess:
             isguesstext = ' (best guess) '
         else:
             isguesstext = ' '
@@ -206,27 +329,21 @@ if clicked:
         W1=1 # Semantic
         W2=0 # Feature
 
-        mytop10simlist_df = getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict)
-        mygamevect_df_SEM = streamlitify_df(mytop10simlist_df)
-        mygamevect_df_SEM = mygamevect_df_SEM.iloc[0:5,:]
-        
-        # SECOND: FEATURAL
-        W1=0 # Semantic
-        W2=1 # Feature
-        mytop10simlist_df = getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict)
-        mygamevect_df_FTR = streamlitify_df(mytop10simlist_df)
-        mygamevect_df_FTR = mygamevect_df_FTR.iloc[0:5,:]
-        
-        mygamevect_df = pd.DataFrame({'Conceptually similar games':mygamevect_df_SEM['Game link'],'Games with similar features':mygamevect_df_FTR['Game link']})
-
-        #st.write('**Conceptually closest games**') 
-        #st.write(mygamevect_df_SEM[['Game link']].to_html(escape = False), unsafe_allow_html = True)
-        #st.write('**Games with similar features**') 
-        #st.write(mygamevect_df_FTR[['Game link']].to_html(escape = False), unsafe_allow_html = True)
+        mytop10simlist_df,myFINALsimlist_df = getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict)
+        mygamevect_df = streamlitify_df(mytop10simlist_df)
+        dumtop10 = myFINALsimlist_df.copy().reset_index(drop=True)[:10]
+        dumtop10.index = dumtop10.index+1
+        mygamevect_df = pd.concat((mygamevect_df['Game link'],dumtop10[['avg_rating','num_raters','numplayersmin','gamedurmin']]),axis=1)
+        mygamevect_df['num_raters']=np.round((np.log10(mygamevect_df['num_raters'])/5)*10).astype('int32')
+        mygamevect_df['numplayersmin']=mygamevect_df['numplayersmin'].astype('int32')
+        mygamevect_df['gamedurmin']=mygamevect_df['gamedurmin'].astype('int32')
+        mygamevect_df.rename(columns={'Game_link':'Game','avg_rating':'Avg. Rating*','num_raters':'Popularity**','numplayersmin':'Min. Number of Players','gamedurmin':'Min. Game Duration (min)'},inplace=True)
         
         st.write(mygamevect_df.to_html(escape = False), unsafe_allow_html = True)
+        bggcom_url =  f'<a target="_blank" href="https://boardgamegeek.com/">BoardGameGeek.com </a>'
+        st.write(f'*Average ratings from ' + bggcom_url + ', from 0 (worst) to 10 (best)', unsafe_allow_html = True)
+        st.write(f'**Popularity goes from 0 (least popular) to 10 (most popular)', unsafe_allow_html = True)
         
     st.success('Done!')
 
-#sns.heatmap(np.random.randn(10,10))
-#st.pyplot()
+#state.sync()
