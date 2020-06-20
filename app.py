@@ -108,7 +108,6 @@ st.header('**MEANINGful recommendations for all board gamers**')
 meeple_image = Image.open('other/meeple.png')
 
 
-
 def page_first(state):
     st.header("Select a game from the menu:")
     # SHOW SOME STUFF
@@ -124,7 +123,7 @@ def page_second(state):
     state.mygamename = 'Taboo'
     state.mygamename = st.text_input('', 'Taboo',max_chars=30)
     state.usemygamename = True
-    st.markdown('** Enter a game name in the text box (change the selection method from the side panel). Press _Go_ to search **')
+    st.markdown('** Enter a game name in the text box to launch a fuzzy search (change the selection method from the side panel). Press _Go_ to search **')
  
   
 pages = {
@@ -248,6 +247,7 @@ def getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,
     dumsupercombo = np.array(myFINALsimlist_df['Similarity'] + myFINALsimlist_df['GameplaySimilarity'] + (myFINALsimlist_df['avg_rating']/10)*avgratingfactor + np.log10(myFINALsimlist_df['num_raters'])/5)/4
     myFINALsimlist_df['supercombo'] = dumsupercombo
     myFINALsimlist_df.sort_values(by='supercombo',inplace=True,ascending=False)
+    myFINALsimlist_df.reset_index(drop=True,inplace=True)
     myFINALsimlist_df.drop(index=0,inplace=True) # DROP THE MAIN COMPARISON GAME ALREADY
     myFINALsimlist_df.reset_index(drop=True,inplace=True)
     
@@ -315,13 +315,26 @@ if clicked:
         
         # PRepare and write out teh chosen game:
         mygamename_st_url = f'<a target="_blank" href="{mygameurl}">{mygamename}</a>'
-        if state.usemygamename: # If text used, indicate this is a guess:
-            isguesstext = ' (best guess) '
-        else:
-            isguesstext = ' '
-        st.write('Games similar to' + isguesstext + mygamename_st_url, unsafe_allow_html=True)
+        # Prepare indication for match quality
+        st.markdown("<style>great{color:green} fair{color:blue} poor{color:orange} terrible{color:red}</style>",unsafe_allow_html=True)
+        qltys = ['great', 'fair', 'poor','terrible']
+        #x = f"Match quality: <{qltys[1]}>{qltys[1]}</{qltys[1]}>"
+        #st.markdown(x, unsafe_allow_html=True)
 
-      
+        if qltynum>95:
+            qltytext = f". Match quality: <{qltys[0]}>{qltys[0]}</{qltys[0]}>"
+        elif (qltynum>80) & (qltynum<=95):
+            qltytext = f". Match quality: <{qltys[1]}>{qltys[1]}</{qltys[1]}>"
+        elif (qltynum>50) & (qltynum<=80):
+            qltytext = f". Match quality: <{qltys[2]}>{qltys[2]}</{qltys[2]}>"
+        else:
+            qltytext = f". Match quality: <{qltys[3]}>{qltys[3]}</{qltys[3]}>"
+        
+        
+        if not state.usemygamename: # If text used, indicate this is a guess:
+            qltytext = '.'
+        st.markdown('Games similar to ' + mygamename_st_url + qltytext, unsafe_allow_html=True)
+        
 
         # Make two separate TOP lists:
         # FIRST: SEMANTIC
