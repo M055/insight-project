@@ -298,18 +298,16 @@ def streamlitify_df(df):
 clicked = st.button('Go')
 if clicked:
     with st.spinner('Looking for similar games...'):
-        #if state.usemygamename:
-        #    mygamename,qltynum = get_real_name_fuzzy(state.usergamename,finalgamelist_df)
-        #else:
-        #    mygamename = state.mydemogamename
-                
-          # FILTERS
         
-        mygamename = state.mygamename
+                
+        
+        
+        # FILTERS
         filt_dict = {'min_rating':min_rating,'min_players':min_players,'min_dur':min_dur,'min_numraters':defaultnumraters}
- 
+        # Get current name - whether from dropdown or entered text
+        mygamename = state.mygamename
         mygamename,qltynum = get_real_name_fuzzy(mygamename,finalgamelist_df)
-        print('Best guess: {} (match score: {}/100)'.format(mygamename,str(qltynum)))
+        #print('Best guess: {} (match score: {}/100)'.format(mygamename,str(qltynum))) # For testing
         mygameid = list(finalgamelist_df.index[finalgamelist_df['game_name']==mygamename])[0] # Need INDEX, not idx
         mygameurl=list(allgamedata_df.loc[allgamedata_df['game_name']==mygamename,'bgg_url'])[0]
         
@@ -318,9 +316,8 @@ if clicked:
         # Prepare indication for match quality
         st.markdown("<style>great{color:green} fair{color:blue} poor{color:orange} terrible{color:red}</style>",unsafe_allow_html=True)
         qltys = ['great', 'fair', 'poor','terrible']
-        #x = f"Match quality: <{qltys[1]}>{qltys[1]}</{qltys[1]}>"
-        #st.markdown(x, unsafe_allow_html=True)
 
+        # Prepare match quality indicator text
         if qltynum>95:
             qltytext = f". Match quality: <{qltys[0]}>{qltys[0]}</{qltys[0]}>"
         elif (qltynum>80) & (qltynum<=95):
@@ -331,13 +328,12 @@ if clicked:
             qltytext = f". Match quality: <{qltys[3]}>{qltys[3]}</{qltys[3]}>"
         
         
-        if not state.usemygamename: # If text used, indicate this is a guess:
+        if not state.usemygamename: # ONLY if text used, indicate this is a guess:
             qltytext = '.'
         st.markdown('Games similar to ' + mygamename_st_url + qltytext, unsafe_allow_html=True)
         
 
-        # Make two separate TOP lists:
-        # FIRST: SEMANTIC
+        # Weights (NB: compute but do not show now)
         W1=1 # Semantic
         W2=0 # Feature
 
