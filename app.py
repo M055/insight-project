@@ -1,5 +1,5 @@
-# VERSION V4BK
-# Testing tabs
+# VERSION V5
+# Adding SQL
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -11,6 +11,10 @@ from PIL import Image
 from fuzzywuzzy import fuzz
 import re
 import os
+import psycopg2
+from sqlalchemy import create_engine
+from sqlalchemy_utils import database_exists, create_database
+import requests
 
 
 #Version note:
@@ -111,9 +115,6 @@ st.title('Meeple for People')
 st.header('**MEANINGful recommendations for all board gamers**')
 meeple_image = Image.open('other/meeple.png')
 
-awsusr = os.environ["AWSUSR"]
-st.write(awsusr)
-
 
 def page_first(state):
     st.header("Select a game from the menu:")
@@ -154,20 +155,34 @@ st.sidebar.markdown('These recommendations balance **Conceptually similar games*
 
 
 ############# LOAD DATA
-allgamedata_df = pd.read_pickle('datasources/bgg_filters.pkl') # USE FOR URLS and FILTERS
-allgamedata_df = allgamedata_df.astype({'game_rank':'int32'},copy=True)
-allgamedocvects = np.load('datasources/allgamedocvects_v3.npz')['arr_0']
-finalgamelist_df = pd.read_pickle('datasources/finalgamelist_df.pkl')
-#finalgamelist_df =  finalgamelist_df.astype({'game_rank':'int32'},copy=True)
-#finalgamelist_df['num_raters'] = [list(allgamedata_df.loc[allgamedata_df['game_name']==g,'num_raters'])[0] for g in #finalgamelist_df['game_name']]
-#finalgamelist_df.reset_index(drop=True,inplace=True) # So that row ids are indices to gamevector array
-##### FOr gameplay-based vectors
-bgg_gameplay_df = pd.read_pickle('datasources/bgg_gameplayfeatures.pkl')
-bgg_gameplay_df.dropna(inplace=True) # Some not-NAs here...
-bgg_gameplay_df.reset_index(drop=True,inplace=True)
-allgamePLAYdocvects = np.array(bgg_gameplay_df.iloc[:,1:]) # Create right here
+@st.cache(suppress_st_warning=True,show_spinner=False)
+def load_boardgame_data():
+    ## READ environ vars
+    # Retrieve data from AWS db
+    dbname = 'm4pdb' 
+    username = os.environ["AWSUSR"]
+    mypswd = os.environ["AWSPWD"]
+    con = psycopg2.connect(database = dbname, user = username, password= mypswd,host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
+    # query:
+    sql_query = """
+    SELECT * FROM bgg_filters_table;
+    """
+    allgamedata_df = pd.read_sql_query(sql_query,con)
+    #allgamedata_df = pd.read_pickle('datasources/bgg_filters.pkl') # USE FOR URLS and FILTERS
+    #allgamedata_df = allgamedata_df.astype({'game_rank':'int32'},copy=True)
 
+    allgamedocvects = np.load('datasources/allgamedocvects_v3.npz')['arr_0']
+    finalgamelist_df = pd.read_pickle('datasources/finalgamelist_df.pkl')
 
+    ##### FOr gameplay-based vectors
+    bgg_gameplay_df = pd.read_pickle('datasources/bgg_gameplayfeatures.pkl')
+    bgg_gameplay_df.dropna(inplace=True) # Some not-NAs here...
+    bgg_gameplay_df.reset_index(drop=True,inplace=True)
+    allgamePLAYdocvects = np.array(bgg_gameplay_df.iloc[:,1:]) # Create right here
+
+    return allgamedata_df, allgamedocvects, finalgamelist_df, bgg_gameplay_df, allgamePLAYdocvects
+
+allgamedata_df, allgamedocvects, finalgamelist_df, bgg_gameplay_df, allgamePLAYdocvects = load_boardgame_data()
 
 
 ########## SET VARIABLES
@@ -297,16 +312,31 @@ def streamlitify_df(df):
     df['Game link'] = [make_clickable(a,b) for a,b in zip(list(df['url']),list(df['Game']))]
     return df
 
-    
+def get_random_question():
+    qurl = 'https://opentdb.com/api.php?amount=1&category=16'
+    response = requests.get(qurl)
+    rr = response.json()
+    rr = rr['results'][0]
+    rqstn = rr['question']
+    rqstn = re.sub('&quot;', '', rqstn)
+    ranwr = rr['correct_answer']
+    ranwr = re.sub('&quot;', '', ranwr)
+
+    return rqstn, ranwr
     
     
 
 ############# WHEN YOU CLICK THE BUTTON...
 clicked = st.button('Go')
+Qtext='Random question: '
+Atext='Answer: '
+
+
 if clicked:
-    with st.spinner('Looking for similar games...'):
-        
-                
+    with st.spinner('Looking for similar games. (This may take up to a minute)'):
+        # Create random q/a
+        rqstn, ranwr = get_random_question()
+        myinfo = st.info(Qtext + rqstn + ' ' + Atext + ranwr)
         
         
         # FILTERS
@@ -359,6 +389,7 @@ if clicked:
         st.write(f'*Average ratings from ' + bggcom_url + ', from 0 (worst) to 10 (best)', unsafe_allow_html = True)
         st.write(f'**Popularity goes from 0 (least popular) to 10 (most popular)', unsafe_allow_html = True)
         
+        myinfo.empty()
     st.success('Done!')
 
 #state.sync()
