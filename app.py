@@ -10,7 +10,11 @@ import sklearn.metrics.pairwise as sklpw
 from PIL import Image
 from fuzzywuzzy import fuzz
 import re
+import os
 
+
+#Version note:
+# Updated to bgg_filters_jun20.pkl from sqlify_data
 
 ### THE WHOLE STATE THING:
 class _SessionState:
@@ -106,6 +110,9 @@ demo_gamelist = tuple(demogamelist_manual)
 st.title('Meeple for People')
 st.header('**MEANINGful recommendations for all board gamers**')
 meeple_image = Image.open('other/meeple.png')
+
+awsusr = os.environ["AWSUSR"]
+st.write(awsusr)
 
 
 def page_first(state):
