@@ -336,7 +336,7 @@ Atext='ANSWER: '
 
 
 if clicked:
-    with st.spinner('Looking for similar games. (This may take up to a minute)'):
+    with st.spinner('Looking for similar games. (This may take up to two minutes)'):
         # Create random q/a
         rqstn, ranwr, rincr = get_random_question()
         #opttext = ['('+str(a+1)+') '+b for a,b in enumerate(rincr)]
