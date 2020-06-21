@@ -321,22 +321,27 @@ def get_random_question():
     rqstn = re.sub('&quot;', '', rqstn)
     ranwr = rr['correct_answer']
     ranwr = re.sub('&quot;', '', ranwr)
+    rincr = rr['incorrect_answers']
+    rincr = [re.sub('&quot;', '', x) for x in rincr]
+    rincr.insert(np.random.randint(0,len(rincr)),ranwr)
 
-    return rqstn, ranwr
+    return rqstn, ranwr, rincr # rincr has all answers
     
     
 
 ############# WHEN YOU CLICK THE BUTTON...
 clicked = st.button('Go')
-Qtext='Random question: '
-Atext='Answer: '
+Qtext='RANDOM QUESTION: '
+Atext='ANSWER: '
 
 
 if clicked:
     with st.spinner('Looking for similar games. (This may take up to a minute)'):
         # Create random q/a
-        rqstn, ranwr = get_random_question()
-        myinfo = st.info(Qtext + rqstn + ' ' + Atext + ranwr)
+        rqstn, ranwr, rincr = get_random_question()
+        #opttext = ['('+str(a+1)+') '+b for a,b in enumerate(rincr)]
+        opttext = [b+'...' for a,b in enumerate(rincr)]
+        myinfo1 = st.info(Qtext + rqstn + '  CHOICES: ' + ' '.join(opttext[:]))
         
         
         # FILTERS
@@ -369,6 +374,8 @@ if clicked:
             qltytext = '.'
         st.markdown('Games similar to ' + mygamename_st_url + qltytext, unsafe_allow_html=True)
         
+        
+        myinfo2 = st.info(Atext + ranwr)
 
         # Weights (NB: compute but do not show now)
         W1=1 # Semantic
@@ -389,7 +396,8 @@ if clicked:
         st.write(f'*Average ratings from ' + bggcom_url + ', from 0 (worst) to 10 (best)', unsafe_allow_html = True)
         st.write(f'**Popularity goes from 0 (least popular) to 10 (most popular)', unsafe_allow_html = True)
         
-        myinfo.empty()
+        myinfo1.empty()
+        myinfo2.empty()
     st.success('Done!')
 
 #state.sync()
