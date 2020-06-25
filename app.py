@@ -104,7 +104,7 @@ def _get_state():
 state = _get_state()
 
 ######## INITIALIZE SOME VARIABLES
-demogamelist_manual = ['Azul', 'Catan','Carcassonne','Cards Against Humanity', 'Clue','Pandemic', 'Scrabble','Taboo' ]
+demogamelist_manual = ['Azul', 'Catan','Carcassonne','Cards Against Humanity', 'Clue','Pandemic', 'Scrabble','Taboo' , 'Wingspan']
 demo_gamelist = tuple(demogamelist_manual)
 
 
@@ -139,16 +139,21 @@ pages = {
 
 
 ##### INIT SIDEBAR
-st.sidebar.image(meeple_image, caption='meeple',width=100)
-st.sidebar.markdown('**Mee.ple** _noun_ \n a small figure used as a playing piece in certain board games, having a stylized human form.')
-
+st.sidebar.image(meeple_image, caption='meeple*',width=50)
+st.sidebar.markdown('***Mee.ple** _noun_ \n a small figure used as a playing piece in certain board games, having a stylized human form.')
 page = st.sidebar.radio("Select your input method", tuple(pages.keys()))
 # Display the selected page with the session state
 pages[page](state)
 
+
 ######## OTHER SIDEBAR STUFF
 st.sidebar.header('What do these recommendations mean?')
 st.sidebar.markdown('These recommendations balance **Conceptually similar games**:  games that, as a whole, are similar to your target game. For example, you would summarize them in very similar ways when describing them to your friend, and **Games with similar features**: games that are similar to your target game in terms of specific features such as the type and genre of the game, or the mechanics it employs.')
+
+
+st.sidebar.markdown(f'[Codebase](https://github.com/M055/insight-project)')
+st.sidebar.markdown(f'[Slides](https://docs.google.com/presentation/d/1WjwLGVVUO2Jj42QNX5rg2alfR9mkni4qfI9egbTCUZw/edit?usp=sharing)')
+st.sidebar.markdown(f'[Connect with me on LinkedIn!](https://www.linkedin.com/in/mohinishs/)')
 
 
 
