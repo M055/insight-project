@@ -8,7 +8,7 @@ In this project I built a board game recommendation system that combines a more 
 
 
 #### What are meeple?
-![A meeple](https://github.com/M055/insight-project/blob/master/other/meeplered.png | width=100)
+![A meeple](https://github.com/M055/insight-project/blob/master/other/meeple_sm.png | width=100)
 [Meeple:](https://en.wiktionary.org/wiki/meeple) - are small person-shaped figures used as players' tokens in some board games. 
 
 
