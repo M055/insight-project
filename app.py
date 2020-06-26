@@ -1,5 +1,5 @@
-# VERSION V5
-# Adding SQL
+# VERSION V6
+# Adding SQL for everything
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -202,44 +202,67 @@ defaultnumraters = 2 # At least so many raters (log10)
 
 # FUNCTIONS
 
-def getcompute_similar_by_gameplay(gamename,allgamedata_df, bgg_gameplay_df, allgamePLAYdocvects):
+sim_sql_dict = {
+    'dbname': 'm4p_db',
+    'username': os.environ["AWSUSR"],
+    'mypswd': os.environ["AWSPWD"]
+}
+def get_cosims(n,sim_sql_dict, currtablename): # To get data from SQL dbs
+    # Define SQL query
+    sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) + " AND grank2>=" + str(n) + ") OR (grank1<" + str(n) + " AND grank2=" + str(n) + ");"
+    # Make connection
+    con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
+    dumdf = pd.read_sql_query(sql_query,con)
+    rankseq = pd.DataFrame([[a,c] if a<n else [b,c] for a,b,c in zip(list(dumdf['grank1']),list(dumdf['grank2']),list(dumdf['cosim']))])
+    rankseq.rename(columns={0:'game_rank',1:'cosim'},inplace=True)
+    return rankseq
+
+
+def getcompute_similar_by_gameplay(gamename,allgamedata_df, bgg_gameplay_df, allgamePLAYdocvects,mygamerank):
     # Get game rank from game name, and matrix index from rank
   
-    gamerank = list(allgamedata_df.loc[allgamedata_df['game_name']==gamename,'game_rank'])[0]
-    gamerank = int(gamerank)
-    gamerank_idx = list(bgg_gameplay_df.index[bgg_gameplay_df['game_rank']==gamerank])[0]
+    #gamerank = list(allgamedata_df.loc[allgamedata_df['game_name']==gamename,'game_rank'])[0]
+    #gamerank = int(gamerank)
+    #gamerank_idx = list(bgg_gameplay_df.index[bgg_gameplay_df['game_rank']==gamerank])[0]
     #print(gamename, gamerank_idx)
     
-    mygamePLAYvector = allgamePLAYdocvects[gamerank_idx,:] 
-    mygamePLAYvector = mygamePLAYvector.reshape(-1,1)
+    #mygamePLAYvector = allgamePLAYdocvects[gamerank_idx,:] 
+    #mygamePLAYvector = mygamePLAYvector.reshape(-1,1)
 
-    mysimilarities_gp = []
-    for t in range(0,allgamePLAYdocvects.shape[0]):
-        currgamevect_gp = allgamePLAYdocvects[t,:]
-        currgamevect_gp = currgamevect_gp.reshape(-1,1)
-        dum = sklpw.cosine_similarity(currgamevect_gp.T,mygamePLAYvector.T)
-        mysimilarities_gp.append(dum[0][0])
-    mycompleteGPsimlist_df = pd.concat((pd.DataFrame({'game_rank':bgg_gameplay_df['game_rank']}),pd.DataFrame({'GameplaySimilarity':mysimilarities_gp})),axis=1)
+    #mysimilarities_gp = []
+    #for t in range(0,allgamePLAYdocvects.shape[0]):
+    #    currgamevect_gp = allgamePLAYdocvects[t,:]
+    #    currgamevect_gp = currgamevect_gp.reshape(-1,1)
+    #    dum = sklpw.cosine_similarity(currgamevect_gp.T,mygamePLAYvector.T)
+    #    mysimilarities_gp.append(dum[0][0])
+    
+    #mycompleteGPsimlist_df = pd.concat((pd.DataFrame({'game_rank':bgg_gameplay_df['game_rank']}),pd.DataFrame({'GameplaySimilarity':mysimilarities_gp})),axis=1)
+    
+    mycompleteGPsimlist_df = get_cosims(mygamerank,sim_sql_dict,'ftrsim_table')
+    mycompleteGPsimlist_df.rename(columns={'cosim':'GameplaySimilarity'},inplace=True)    
+
     return mycompleteGPsimlist_df
 
-def getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict):
-    myvectid = mygameid
-    mygamevector = allgamedocvects[myvectid,:]
-    mygamevector= mygamevector.reshape(-1,1)
-    mysimilarities = []
-    for t in range(0,allgamedocvects.shape[0]):
-        currgamevect = allgamedocvects[t,:]
-        currgamevect = currgamevect.reshape(-1,1)
-        dum = sklpw.cosine_similarity(currgamevect.T,mygamevector.T)
-        mysimilarities.append(dum[0][0])
-        
+def getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict,mygamerank):
+    #myvectid = mygameid
+    #mygamevector = allgamedocvects[myvectid,:]
+    #mygamevector= mygamevector.reshape(-1,1)
+    #mysimilarities = []
+    #for t in range(0,allgamedocvects.shape[0]):
+    #    currgamevect = allgamedocvects[t,:]
+    #    currgamevect = currgamevect.reshape(-1,1)
+    #   dum = sklpw.cosine_similarity(currgamevect.T,mygamevector.T)
+    #    mysimilarities.append(dum[0][0])
+    simrankseq = get_cosims(mygamerank,sim_sql_dict,'semsim_table')
+    mycompletesimlist_df=simrankseq.merge(allgamedata_df[['game_rank','game_name','num_raters']],how='left',on='game_rank')
+    mycompletesimlist_df.rename(columns={'cosim':'Similarity'},inplace=True)
      # GET NUMRATERs
-    dumnumraters = [allgamedata_df.loc[allgamedata_df['game_name']==g,'num_raters'] for g in finalgamelist_df['game_name']]
-    mycompletesimlist_df = pd.concat((finalgamelist_df[['game_rank','game_name', 'num_raters']],pd.DataFrame({'Similarity':mysimilarities})),axis=1)
+    #dumnumraters = [allgamedata_df.loc[allgamedata_df['game_name']==g,'num_raters'] for g in finalgamelist_df['game_name']]
+    #mycompletesimlist_df = pd.concat((finalgamelist_df[['game_rank','game_name', 'num_raters']],pd.DataFrame({'Similarity':mysimilarities})),axis=1)
 
     #pd.concat((finalgamelist_df['game_rank'],finalgamelist_df['game_name'],pd.DataFrame({'Similarity':mysimilarities})),axis=1)
     # Get this also for GAMEPLAY data
-    mycompleteGPsimlist_df = getcompute_similar_by_gameplay(mygamename,allgamedata_df, bgg_gameplay_df, allgamePLAYdocvects)
+    mycompleteGPsimlist_df = getcompute_similar_by_gameplay(mygamename,allgamedata_df, bgg_gameplay_df, allgamePLAYdocvects,mygamerank)
 
     # PUt sim lists together
     mycompletesimlist_df  = mycompletesimlist_df.astype({'game_rank':'int32'},copy=True)
@@ -304,8 +327,8 @@ def get_real_name_fuzzy(usergamename,finalgamelist_df):
     #possiblegame_name = list(finalgamelist_df.loc[finalgamelist_df['idx']==possiblegame_idx,'gamename'])[0]
     possiblegame_name = finalgamelist_df.iloc[possiblegame_idx,2]
     #print('Best match: {}'.format(possiblegame_name))
-    
-    return possiblegame_name,max(gamename_matchlist)
+    mygamerank = finalgamelist_df.iloc[possiblegame_idx,1]
+    return possiblegame_name,mygamerank,max(gamename_matchlist)
 
 def make_clickable(url,text): # Make liks in pd df for url in table
     return f'<a target="_blank" href="{url}">{text}</a>'
@@ -351,7 +374,7 @@ if clicked:
         filt_dict = {'min_rating':min_rating,'min_players':min_players,'min_dur':min_dur,'min_numraters':defaultnumraters}
         # Get current name - whether from dropdown or entered text
         mygamename = state.mygamename
-        mygamename,qltynum = get_real_name_fuzzy(mygamename,finalgamelist_df)
+        mygamename,mygamerank,qltynum = get_real_name_fuzzy(mygamename,finalgamelist_df)
         #print('Best guess: {} (match score: {}/100)'.format(mygamename,str(qltynum))) # For testing
         mygameid = list(finalgamelist_df.index[finalgamelist_df['game_name']==mygamename])[0] # Need INDEX, not idx
         mygameurl=list(allgamedata_df.loc[allgamedata_df['game_name']==mygamename,'bgg_url'])[0]
@@ -384,7 +407,7 @@ if clicked:
         W1=1 # Semantic
         W2=0 # Feature
 
-        mytop10simlist_df,myFINALsimlist_df = getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict)
+        mytop10simlist_df,myFINALsimlist_df = getcompute_similar_games(mygameid,mygamename,allgamedata_df,allgamedocvects,finalgamelist_df,bgg_gameplay_df, allgamePLAYdocvects,W1,W2,filt_dict,mygamerank)
         mygamevect_df = streamlitify_df(mytop10simlist_df)
         dumtop10 = myFINALsimlist_df.copy().reset_index(drop=True)[:10]
         dumtop10.index = dumtop10.index+1
