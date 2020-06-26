@@ -321,12 +321,12 @@ def get_random_question():
 
 ############# WHEN YOU CLICK THE BUTTON...
 clicked = st.button('Go')
-Qtext='RANDOM QUESTION: '
+Qtext='RANDOM QUESTION WHILE YOU WAIT: '
 Atext='ANSWER: '
 
 
 if clicked:
-    with st.spinner('Looking for similar games. (This may take up to two minutes)'):
+    with st.spinner('Looking for similar games. (This may take up to half a minute)'):
         # Create random q/a
         rqstn, ranwr, rincr = get_random_question()
         #opttext = ['('+str(a+1)+') '+b for a,b in enumerate(rincr)]
