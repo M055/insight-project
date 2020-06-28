@@ -201,7 +201,7 @@ sim_sql_dict = {
 }
 def get_cosims(n,sim_sql_dict, currtablename): # To get data from SQL dbs
     # Define SQL query
-    sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) + " AND grank2>=" + str(n) + ") OR (grank1<" + str(n) + " AND grank2=" + str(n) + ");"
+    sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) + " AND grank2>=" + str(n) + ") OR (grank2=" + str(n) + " AND grank1<" + str(n) + ");"
     # Make connection
     con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
     dumdf = pd.read_sql_query(sql_query,con)
