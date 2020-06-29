@@ -18,7 +18,8 @@ import requests
 #Version note:
 # Updated to bgg_filters_jun20.pkl from sqlify_data
 
-### THE WHOLE STATE THING:
+### SET UP FUNCTIONS FOR HANDLING STATE-SPECIFIC VARIABLES:
+# Via streamlit user Synode
 class _SessionState:
 
     def __init__(self, session):
@@ -100,7 +101,7 @@ def _get_state():
 
 
 
-############# REAL START HERE!
+############# STORE INITIAL STATE
 state = _get_state()
 
 ######## INITIALIZE SOME VARIABLES
@@ -114,6 +115,7 @@ st.header('**MEANINGful recommendations for all board gamers**')
 meeple_image = Image.open('other/meeple.png')
 
 
+#### SETUP STATE-SPECIFIC CONTENT
 def page_first(state):
     st.header("Select a game from the menu:")
     # SHOW SOME STUFF
@@ -199,15 +201,6 @@ sim_sql_dict = {
     'username': os.environ["AWSUSR"],
     'mypswd': os.environ["AWSPWD"]
 }
-#def get_cosims(n,sim_sql_dict, currtablename): # To get data from SQL dbs
-    # Define SQL query
-#    sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) + " AND grank2>=" + str(n) + ") OR (grank2=" + str(n) + " AND grank1<" + str(n) + ");"
-    # Make connection
-#    con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
-#    dumdf = pd.read_sql_query(sql_query,con)
-#    rankseq = pd.DataFrame([[a,c] if a<n else [b,c] for a,b,c in zip(list(dumdf['grank1']),list(dumdf['grank2']),list(dumdf['cosim']))])
-#    rankseq.rename(columns={0:'game_rank',1:'cosim'},inplace=True)
-#    return rankseq
 
 def get_cosims(n,sim_sql_dict, currtablename):
     # Define SQL query
@@ -228,14 +221,14 @@ def get_cosims(n,sim_sql_dict, currtablename):
 
 
 def getcompute_similar_by_gameplay(mygamerank,sim_sql_dict):
-    
+    # Get gameplay similarties
     mycompleteGPsimlist_df = get_cosims(mygamerank,sim_sql_dict,'ftrsim_table')
     mycompleteGPsimlist_df.rename(columns={'cosim':'GameplaySimilarity'},inplace=True)    
 
     return mycompleteGPsimlist_df
 
 def getcompute_similar_games(mygamerank,sim_sql_dict,W1,W2,filt_dict):
-  
+    # Get semantic siilarities and fold in with other values
     simrankseq = get_cosims(mygamerank,sim_sql_dict,'semsim_table')
     mycompletesimlist_df=simrankseq.merge(allgamedata_df[['game_rank','game_name','num_raters']],how='left',on='game_rank')
     mycompletesimlist_df.rename(columns={'cosim':'Similarity'},inplace=True)
@@ -379,10 +372,15 @@ if clicked:
         
         if not state.usemygamename: # ONLY if text used, indicate this is a guess:
             qltytext = '.'
+            
+        # Give the anwer to the question first:
+        myinfo2 = st.info(Atext + ranwr)
+        
+        # Show bestmatch to entered game
         st.markdown('Games similar to ' + mygamename_st_url + qltytext, unsafe_allow_html=True)
         
         
-        myinfo2 = st.info(Atext + ranwr)
+        
 
         # Weights (NB: compute but do not show now)
         W1=1 # Semantic
