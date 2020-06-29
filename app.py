@@ -211,8 +211,8 @@ sim_sql_dict = {
 
 def get_cosims(n,sim_sql_dict, currtablename):
     # Define SQL query
-    sql_query1 = """SELECT * FROM semsim_table WHERE (grank1=""" + str(n) +  """); """
-    sql_query2 = """SELECT * FROM semsim_table WHERE (grank2=""" + str(n) +  """); """
+    sql_query1 = "SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) +  "); "
+    sql_query2 = "SELECT * FROM " + currtablename + " WHERE (grank2=" + str(n) +  "); "
     #sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(currgamerank4sql) + " AND grank2>=" + str(currgamerank4sql) + ") OR (grank1<" + str(currgamerank4sql) + " AND grank2=" + str(currgamerank4sql) + ");"
     # Make connection
     con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
@@ -222,6 +222,8 @@ def get_cosims(n,sim_sql_dict, currtablename):
     dumdf.drop_duplicates(inplace=True)
     rankseq = pd.DataFrame([[a,c] if a<n else [b,c] for a,b,c in zip(list(dumdf['grank1']),list(dumdf['grank2']),list(dumdf['cosim']))])
     rankseq.rename(columns={0:'game_rank',1:'cosim'},inplace=True)
+    #rankseq.sort_values(by='cosim',inplace=True,ascending=False)
+    #rankseq.reset_index(drop=True, inplace=True)
     return rankseq
 
 
