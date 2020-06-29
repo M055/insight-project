@@ -199,12 +199,27 @@ sim_sql_dict = {
     'username': os.environ["AWSUSR"],
     'mypswd': os.environ["AWSPWD"]
 }
-def get_cosims(n,sim_sql_dict, currtablename): # To get data from SQL dbs
+#def get_cosims(n,sim_sql_dict, currtablename): # To get data from SQL dbs
     # Define SQL query
-    sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) + " AND grank2>=" + str(n) + ") OR (grank2=" + str(n) + " AND grank1<" + str(n) + ");"
+#    sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(n) + " AND grank2>=" + str(n) + ") OR (grank2=" + str(n) + " AND grank1<" + str(n) + ");"
+    # Make connection
+#    con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
+#    dumdf = pd.read_sql_query(sql_query,con)
+#    rankseq = pd.DataFrame([[a,c] if a<n else [b,c] for a,b,c in zip(list(dumdf['grank1']),list(dumdf['grank2']),list(dumdf['cosim']))])
+#    rankseq.rename(columns={0:'game_rank',1:'cosim'},inplace=True)
+#    return rankseq
+
+def get_cosims(n,sim_sql_dict, currtablename):
+    # Define SQL query
+    sql_query1 = """SELECT * FROM semsim_table WHERE (grank1=""" + str(n) +  """); """
+    sql_query2 = """SELECT * FROM semsim_table WHERE (grank2=""" + str(n) +  """); """
+    #sql_query = " SELECT * FROM " + currtablename + " WHERE (grank1=" + str(currgamerank4sql) + " AND grank2>=" + str(currgamerank4sql) + ") OR (grank1<" + str(currgamerank4sql) + " AND grank2=" + str(currgamerank4sql) + ");"
     # Make connection
     con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
-    dumdf = pd.read_sql_query(sql_query,con)
+    dumdf1 = pd.read_sql_query(sql_query1,con)
+    dumdf2 = pd.read_sql_query(sql_query2,con)
+    dumdf = pd.concat((dumdf1,dumdf2))
+    dumdf.drop_duplicates(inplace=True)
     rankseq = pd.DataFrame([[a,c] if a<n else [b,c] for a,b,c in zip(list(dumdf['grank1']),list(dumdf['grank2']),list(dumdf['cosim']))])
     rankseq.rename(columns={0:'game_rank',1:'cosim'},inplace=True)
     return rankseq
