@@ -164,7 +164,7 @@ st.sidebar.markdown(f'[Connect with me on LinkedIn!](https://www.linkedin.com/in
 def load_boardgame_data():
     ## READ environ vars
     # Retrieve data from AWS db
-    dbname = 'm4p_db' 
+    dbname = 'm4pdb' 
     username = os.environ["AWSUSR"]
     mypswd = os.environ["AWSPWD"]
     con = psycopg2.connect(database = dbname, user = username, password= mypswd,host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
