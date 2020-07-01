@@ -1,5 +1,5 @@
-# VERSION V6
-# Adding SQL for everything
+# VERSION V7
+# Clean up sql, add db-side queries
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -151,7 +151,7 @@ pages[page](state)
 ######## OTHER SIDEBAR STUFF
 st.sidebar.header('What do these recommendations mean?')
 st.sidebar.markdown('These recommendations balance **Conceptually similar games**:  games that, as a whole, are similar to your target game. For example, you would summarize them in very similar ways when describing them to your friend, and **Games with similar features**: games that are similar to your target game in terms of specific features such as the type and genre of the game, or the mechanics it employs.')
-
+st.sidebar.markdown('Note: Leave the "Prefer high rank / popularity" unselected to allow results that include less well-known games, which might nevetheless be right for you!')
 
 st.sidebar.markdown(f'[Codebase](https://github.com/M055/insight-project)')
 st.sidebar.markdown(f'[Slides](https://docs.google.com/presentation/d/1WjwLGVVUO2Jj42QNX5rg2alfR9mkni4qfI9egbTCUZw/edit?usp=sharing)')
@@ -227,7 +227,7 @@ def getcompute_similar_by_gameplay(mygamerank,sim_sql_dict):
 
     return mycompleteGPsimlist_df
 
-def getcompute_similar_games(mygamerank,sim_sql_dict,W1,W2,filt_dict):
+def getcompute_similar_games(mygamerank,sim_sql_dict,W1,W2,filt_dict,preferhighs):
     # Get semantic siilarities and fold in with other values
     simrankseq = get_cosims(mygamerank,sim_sql_dict,'semsim_table')
     mycompletesimlist_df=simrankseq.merge(allgamedata_df[['game_rank','game_name','num_raters']],how='left',on='game_rank')
@@ -262,9 +262,12 @@ def getcompute_similar_games(mygamerank,sim_sql_dict,W1,W2,filt_dict):
     # UPDATE myFINALsimlist_df
     myFINALsimlist_df = myFINALsimlist_df.loc[myfilters,:].copy()
     
+    #preferhighs = 0 # Added June 30, 2020: Prefer high scoring/popularity games or not
      #MO: Jun 18: Add in SUPECOMBO. Sort right after
-    avgratingfactor = myFINALsimlist_df.iloc[0,:]['avg_rating']/10 # SCALE by rating of game?
-    dumsupercombo = np.array(myFINALsimlist_df['Similarity'] + myFINALsimlist_df['GameplaySimilarity'] + (myFINALsimlist_df['avg_rating']/10)*avgratingfactor + np.log10(myFINALsimlist_df['num_raters'])/5)/4
+    avgratingfactor = myFINALsimlist_df.iloc[0,:]['avg_rating'] # SCALE by rating of game?
+    dumsupercombo = np.array(myFINALsimlist_df['Similarity'] + myFINALsimlist_df['GameplaySimilarity'] + (myFINALsimlist_df['avg_rating']/100)*avgratingfactor*preferhighs + preferhighs*np.log10(myFINALsimlist_df['num_raters'])/5)/4
+    # ORIGINAL SUPERCOMBO DEFINITION:
+    #dumsupercombo = np.array(myFINALsimlist_df['Similarity'] + myFINALsimlist_df['GameplaySimilarity'] + (myFINALsimlist_df['avg_rating']/10)*avgratingfactor + np.log10(myFINALsimlist_df['num_raters'])/5)/4
     myFINALsimlist_df['supercombo'] = dumsupercombo
     myFINALsimlist_df.sort_values(by='supercombo',inplace=True,ascending=False)
     myFINALsimlist_df.reset_index(drop=True,inplace=True)
@@ -302,6 +305,21 @@ def get_real_name_fuzzy(usergamename,finalgamelist_df):
     mygamerank = finalgamelist_df.iloc[possiblegame_idx,1]
     return possiblegame_name,mygamerank,max(gamename_matchlist)
 
+def get_real_name_fuzzy2(usergamename,sim_sql_dict):
+    # Open con to db
+    con = psycopg2.connect(database = sim_sql_dict.get('dbname'), user = sim_sql_dict.get('username'), password=sim_sql_dict.get('mypswd'), host='meeps4peeps-db.ckzlat62o0dz.us-east-1.rds.amazonaws.com')
+    # Clean up
+    usergamename = re.sub(r"(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)|^rt|http.+?", "", usergamename)
+    sql4name="""
+        SELECT game_name, game_rank, SIMILARITY(game_name, '""" + mygamename + """')                                               
+        FROM bgg_filters_table                                                          
+        ORDER BY SIMILARITY(game_name, '""" + mygamename + """') DESC                             
+        LIMIT 1;
+        """
+    gamename_df = pd.read_sql_query(sql4name,con)
+    return list(gamename_df['game_name'])[0],list(gamename_df['game_rank'])[0],list(gamename_df['similarity'])[0]*100
+    
+
 def make_clickable(url,text): # Make liks in pd df for url in table
     return f'<a target="_blank" href="{url}">{text}</a>'
 
@@ -330,25 +348,19 @@ def get_random_question():
     
 
 ############# WHEN YOU CLICK THE BUTTON...
+preferhighs = st.checkbox('Prefer high rank / popularity')
 clicked = st.button('Go')
-Qtext='RANDOM QUESTION WHILE YOU WAIT: '
-Atext='ANSWER: '
 
 
 if clicked:
     with st.spinner('Looking for similar games. (This may take up to half a minute)'):
-        # Create random q/a
-        rqstn, ranwr, rincr = get_random_question()
-        #opttext = ['('+str(a+1)+') '+b for a,b in enumerate(rincr)]
-        opttext = [b+'...' for a,b in enumerate(rincr)]
-        myinfo1 = st.info(Qtext + rqstn + '  CHOICES: ' + ' '.join(opttext[:]))
         
         
         # FILTERS
         filt_dict = {'min_rating':min_rating,'min_players':min_players,'min_dur':min_dur,'min_numraters':defaultnumraters}
         # Get current name - whether from dropdown or entered text
         mygamename = state.mygamename
-        mygamename,mygamerank,qltynum = get_real_name_fuzzy(mygamename,finalgamelist_df)
+        mygamename,mygamerank,qltynum = get_real_name_fuzzy2(mygamename,sim_sql_dict)#,finalgamelist_df)
         #print('Best guess: {} (match score: {}/100)'.format(mygamename,str(qltynum))) # For testing
         mygameid = list(finalgamelist_df.index[finalgamelist_df['game_name']==mygamename])[0] # Need INDEX, not idx
         mygameurl=list(allgamedata_df.loc[allgamedata_df['game_name']==mygamename,'bgg_url'])[0]
@@ -373,20 +385,16 @@ if clicked:
         if not state.usemygamename: # ONLY if text used, indicate this is a guess:
             qltytext = '.'
             
-        # Give the anwer to the question first:
-        myinfo2 = st.info(Atext + ranwr)
-        
         # Show bestmatch to entered game
         st.markdown('Games similar to ' + mygamename_st_url + qltytext, unsafe_allow_html=True)
-        
         
         
 
         # Weights (NB: compute but do not show now)
         W1=1 # Semantic
-        W2=0 # Feature
+        W2=1 # Feature
 
-        mytop10simlist_df,myFINALsimlist_df = getcompute_similar_games(mygamerank,sim_sql_dict,W1,W2,filt_dict)
+        mytop10simlist_df,myFINALsimlist_df = getcompute_similar_games(mygamerank,sim_sql_dict,W1,W2,filt_dict,int(preferhighs))
         mygamevect_df = streamlitify_df(mytop10simlist_df)
         dumtop10 = myFINALsimlist_df.copy().reset_index(drop=True)[:10]
         dumtop10.index = dumtop10.index+1
@@ -401,8 +409,6 @@ if clicked:
         st.write(f'*Average ratings from ' + bggcom_url + ', from 0 (worst) to 10 (best)', unsafe_allow_html = True)
         st.write(f'**Popularity goes from 0 (least popular) to 10 (most popular)', unsafe_allow_html = True)
         
-        myinfo1.empty()
-        myinfo2.empty()
     st.success('Done!')
 
 #state.sync()
