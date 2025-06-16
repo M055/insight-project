@@ -4,7 +4,7 @@
 
 In this project I built a board game recommendation system that combines a more "traditional" feature-based recommendation with an NLP-driven, *semantics-based* recommendation.
 
-[Click here to try out some recommendations here!](https://meeple4people.herokuapp.com/)
+[Click here to try out some recommendations here!](https://datasavvy.xyz/meeple4people/)
 
 
 #### What are meeple?
